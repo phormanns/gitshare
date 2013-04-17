@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="gitshare" default="jar">
+
+	<property name="one-jar.dist.dir" value="tools" />
+	<property name="one-jar.version" value="0.97" />
+	<property name="jnlpbaseurl" value="http://peh01.hostsharing.net" />
+
+	<path id="cp">
+		<fileset dir="lib">
+		    <include name="*.jar"/>
+		</fileset>
+	</path>
+
+	<taskdef name="one-jar" classname="com.simontuffs.onejar.ant.OneJarTask"
+		classpath="${one-jar.dist.dir}/one-jar-ant-task-${one-jar.version}.jar" onerror="report" />
+
+    <target name="clean">
+    	<delete dir="build"/>
+	</target>
+
+    <target name="compile">
+    	<mkdir dir="build"/>
+    	<mkdir dir="build/cls"/>
+    	<javac srcdir="src" classpathref="cp" destdir="build/cls" />
+    </target>
+
+	<target name="jar" depends="compile">
+		<jar destfile="build/gitshare.jar">
+			<fileset dir="build/cls" />
+			<fileset dir="resource" />
+			<manifest>
+				<attribute name="Class-Path" value="/usr/share/java/jsch.jar /usr/share/java/org.eclipse.jgit.jar"/>
+				<attribute name="Main-Class" value="de.jalin.gitshare.GitShare"/>
+			</manifest>
+		</jar>        
+    </target>
+
+	<target name="webstart" depends="jar">
+    	<mkdir dir="build/webstart"/>
+		<copy todir="build/webstart">
+			<fileset dir="tools">
+			    <include name="gitshare.jnlp"/>
+			</fileset>
+			<filterset>
+				<filter token="CODEBASE" value="${jnlpbaseurl}"/>
+			</filterset>
+		</copy>
+		<copy todir="build/webstart">
+			<fileset dir="lib">
+			    <include name="*.jar"/>
+			</fileset>
+			<fileset dir="build">
+			    <include name="gitshare.jar"/>
+			</fileset>
+		</copy>
+		<signjar keystore="tools/keystore" alias="signjalin" storepass="schokolade">
+			<fileset dir="build/webstart">
+			    <include name="*.jar"/>
+			</fileset>
+		</signjar>
+    </target>
+
+	<target name="one-jar" depends="compile">
+		<one-jar destfile="build/gitshare-one.jar">
+			<manifest>
+				<attribute name="Main-Class" value="com.simontuffs.onejar.Boot"/>
+				<attribute name="One-Jar-Main-Class" value="de.jalin.gitshare.GitShareApplication"/>
+			</manifest>
+			<main>
+				<fileset dir="build/cls" />
+				<fileset dir="resource" />
+			</main>
+			<lib>
+				<fileset dir="lib" />
+			</lib>
+		</one-jar>
+	</target>
+	
+</project>
