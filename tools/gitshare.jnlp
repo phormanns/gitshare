@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<jnlp spec="1.0+" codebase="@CODEBASE@" href="gitshare.jnlp">
+	<information>
+	    <title>GitShare</title>
+	    <vendor>Peter Hormanns</vendor>
+	    <description>Share Files using Git Repository</description>
+	    <homepage href="http://jalin.de"/> 
+    	<offline-allowed/> 
+    	<shortcut online="false">
+      		<desktop/>
+      		<menu submenu="other"/>
+    	</shortcut>
+	</information>
+	<security>
+		<all-permissions/>
+	</security>
+	<resources>     
+		<j2se version="1.7+"/> 
+	   	<jar href="gitshare.jar"/>   
+	   	<jar href="jsch-0.1.49.jar"/>   
+	   	<jar href="org.eclipse.jgit-2.2.0.201212191850-r.jar"/>   
+	</resources>
+	<application-desc main-class="de.jalin.gitshare.GitShareApplication"/>
+</jnlp>
