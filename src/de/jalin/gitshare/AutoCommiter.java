@@ -101,6 +101,7 @@ public class AutoCommiter implements Runnable {
 				key = watch.poll(500, TimeUnit.MILLISECONDS);
 				if (key != null) {
 					StringBuffer comment = new StringBuffer("AutoCommit");
+					boolean doCommitAndPush = false;
 					for (WatchEvent<?> evt : key.pollEvents()) {
 						Kind<?> kind = evt.kind();
 						LOG.info(kind.name());
@@ -109,32 +110,39 @@ public class AutoCommiter implements Runnable {
 							Path resolvedPath = directoryKeys.get(key).resolve((Path) context);
 							Path relPath = path.relativize(resolvedPath);
 							String pathString = relPath.toString();
-							LOG.info(pathString);
-							if (kind.equals(ENTRY_DELETE)) {
-								if (!resolvedPath.toFile().exists()) {
-									share.enqueue(new RemoveAction(share, pathString));
-									comment.append("\n  rm " + pathString);
+							if (isValidFile(pathString)) {
+								LOG.info("ADD: " + pathString);
+								doCommitAndPush = true;
+								if (kind.equals(ENTRY_DELETE)) {
+									if (!resolvedPath.toFile().exists()) {
+										share.enqueue(new RemoveAction(share, pathString));
+										comment.append("\n  rm " + pathString);
+									}
+								} else {
+									if (resolvedPath.toFile().isDirectory()) {
+										WatchKey watchKey;
+										try {
+											watchKey = resolvedPath.register(watch, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+											directoryKeys.put(watchKey, resolvedPath);
+										} catch (IOException e) {
+										}
+										share.enqueue(new AddAction(share, pathString + "/"));
+										comment.append("\n  add " + pathString);
+									} else {
+										share.enqueue(new AddAction(share, pathString));
+										comment.append("\n  add " + pathString);
+									}
 								}
 							} else {
-								if (resolvedPath.toFile().isDirectory()) {
-									WatchKey watchKey;
-									try {
-										watchKey = resolvedPath.register(watch, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
-										directoryKeys.put(watchKey, resolvedPath);
-									} catch (IOException e) {
-									}
-									share.enqueue(new AddAction(share, pathString + "/"));
-									comment.append("\n  add " + pathString);
-								} else {
-									share.enqueue(new AddAction(share, pathString));
-									comment.append("\n  add " + pathString);
-								}
+								LOG.info("SKIP: " + pathString);
 							}
 						}
 					}
 					key.reset();
-					share.enqueue(new CommitAction(share, author, email, comment.toString()));
-					share.enqueue(new PushAction(share));
+					if (doCommitAndPush) {
+						share.enqueue(new CommitAction(share, author, email, comment.toString()));
+						share.enqueue(new PushAction(share));
+					}
 				}
 				Thread.sleep(15000L);
 				// pull every 10 minutes
@@ -150,6 +158,19 @@ public class AutoCommiter implements Runnable {
 				LOG.severe(e.getMessage());
 			}
 		}
+	}
+
+	public boolean isValidFile(String path) {
+		if (path == null || path.isEmpty()) {
+			return false;
+		}
+		if (path.equals(".git") || path.startsWith(".git/") || path.startsWith(".git\\")) {
+			return false;
+		}
+		if (path.endsWith("tmp") && path.contains("/._")) {
+			return false;
+		}
+		return true;
 	}
 	
 	@Override
